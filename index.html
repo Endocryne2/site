@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Helper — Проверка безопасности</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0d1117;
+        color: #e6edf3;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: #161b22;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #30363d;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+        margin: 0 0 10px;
+        font-size: 26px;
+        text-align: center;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #8b949e;
+        margin-bottom: 25px;
+    }
+
+    .status-box {
+        padding: 18px;
+        border-radius: 10px;
+        margin-top: 20px;
+        text-align: center;
+        font-size: 18px;
+        border: 1px solid #30363d;
+    }
+
+    .safe {
+        background: rgba(46, 160, 67, 0.15);
+        border-color: #2ea043;
+        color: #57d07a;
+    }
+
+    .warning {
+        background: rgba(212, 92, 92, 0.15);
+        border-color: #da3633;
+        color: #ff8d8d;
+    }
+
+    .loading {
+        background: rgba(56, 139, 253, 0.12);
+        border-color: #388bfd;
+        color: #79c0ff;
+    }
+
+    .virus-logo {
+        width: 140px;
+        display: block;
+        margin: 0 auto 10px;
+        opacity: 0.8;
+    }
+
+    .details {
+        margin-top: 10px;
+        text-align: center;
+        color: #8b949e;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Test Helper</h1>
+    <div class="subtitle">Android приложение для помощи в обучении</div>
+
+    <img class="virus-logo" src="https://www.virustotal.com/images/VT_logo.svg" alt="VirusTotal">
+
+    <div id="vt-status" class="status-box loading">
+        Проверка безопасности...
+    </div>
+
+    <div class="details" id="vt-details"></div>
+</div>
+
+<script>
+fetch("https://testhelper.pythonanywhere.com/vt-status")  // ← замени на свой URL
+  .then(r => r.json())
+  .then(data => {
+      const box = document.getElementById("vt-status");
+      const details = document.getElementById("vt-details");
+
+      if (data.status === "safe") {
+          box.className = "status-box safe";
+          box.innerHTML = "Файл безопасен ✔";
+
+          details.innerHTML = `
+              Обнаружено угроз: <b>${data.malicious}</b><br>
+              Проверено: <b>${data.harmless}</b> движками
+          `;
+      } else {
+          box.className = "status-box warning";
+          box.innerHTML = "Обнаружены угрозы ⚠";
+
+          details.innerHTML = `
+              Malicious: ${data.malicious}<br>
+              Harmless: ${data.harmless}
+          `;
+      }
+  })
+  .catch(() => {
+      const box = document.getElementById("vt-status");
+      box.className = "status-box warning";
+      box.innerHTML = "Ошибка загрузки данных";
+  });
+</script>
+
+</body>
+</html>

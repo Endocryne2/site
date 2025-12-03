@@ -1273,58 +1273,49 @@
 
         // 5. Отправка сообщения на бэкенд (ИСПРАВЛЕНО!)
         chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const message = chatInput.value.trim();
-            if (!message) return;
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
 
-            // Показываем сообщение пользователя
-            renderMessage(message, true);
-            chatInput.value = '';
-            chatSendBtn.disabled = true;
+    renderMessage(message, true);
+    chatInput.value = '';
+    chatSendBtn.disabled = true;
 
-            // Временное сообщение «печатает…»
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'chat-status-message';
-            typingDiv.textContent = 'Печатает...';
-            chatMessagesContainer.appendChild(typingDiv);
-            scrollToBottom();
+    const typing = document.createElement('div');
+    typing.className = 'chat-status-message text-sm italic text-gray-500';
+    typing.textContent = 'Админ печатает...';
+    chatMessagesContainer.appendChild(typing);
+    scrollToBottom();
 
-            try {
-                const payload = {
-                    message: message,
-                    userId: currentUserId,
-                    username: currentUsername
-                };
+    try {
+        const payload = {
+            message: message,
+            userId: currentUserId,
+            username: currentUsername
+        };
 
-                const response = await fetch(FLASK_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload) // ← Вот то самое исправление!
-                });
-
-                // Убираем «печатает…»
-                chatMessagesContainer.removeChild(typingDiv);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    // Если бэкенд возвращает ответ бота — показываем его
-                    renderMessage(data.reply || 'Спасибо за сообщение! Мы свяжемся с вами в ближайшее время.', false);
-                } else {
-                    renderMessage('Ошибка сервера. Попробуйте позже.', false);
-                }
-            } catch (err) {
-                console.error('Chat error:', err);
-                if (chatMessagesContainer.contains(typingDiv)) {
-                    chatMessagesContainer.removeChild(typingDiv);
-                }
-                renderMessage('Ошибка сети. Проверьте подключение к интернету.', false);
-            } finally {
-                chatSendBtn.disabled = false;
-                chatInput.focus();
-            }
+        const res = await fetch(FLASK_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+
+        chatMessagesContainer.removeChild(typing);
+
+        if (res.ok) {
+            const data = await res.json();
+            renderMessage(data.reply, false);
+        } else {
+            renderMessage('Ошибка отправки', false);
+        }
+    } catch (err) {
+        chatMessagesContainer.removeChild(typing);
+        renderMessage('Нет связи с сервером', false);
+    } finally {
+        chatSendBtn.disabled = false;
+        chatInput.focus();
+    }
+});
 
         // Отправка по Enter (Shift+Enter = новая строка)
         chatInput.addEventListener('keydown', (e) => {
@@ -1337,4 +1328,5 @@
 </script>
 </body>
 </html>
+
 

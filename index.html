@@ -1143,11 +1143,11 @@
         // Анимация появления при скролле
         // ====================================
         const revealElements = document.querySelectorAll('.reveal');
-       
+      
         const revealOnScroll = () => {
             const windowHeight = window.innerHeight;
             const revealPoint = 100;
-           
+          
             revealElements.forEach(element => {
                 const revealTop = element.getBoundingClientRect().top;
                 if (revealTop < windowHeight - revealPoint) {
@@ -1155,7 +1155,7 @@
                 }
             });
         };
-       
+      
         window.addEventListener('scroll', revealOnScroll);
         window.addEventListener('load', revealOnScroll);
         setTimeout(revealOnScroll, 100);
@@ -1165,11 +1165,10 @@
         // ====================================
         const downloadButton = document.getElementById('download-button');
         const downloadCounter = document.getElementById('download-counter');
-       
+      
         let downloadCount = localStorage.getItem('appDownloadCount') ?
                             parseInt(localStorage.getItem('appDownloadCount')) :
                             150;
-
         function animateCounter(element, start, end, duration = 1000) {
             let startTimestamp = null;
             const step = (timestamp) => {
@@ -1184,21 +1183,17 @@
             };
             window.requestAnimationFrame(step);
         }
-
         animateCounter(downloadCounter, 0, downloadCount, 1200);
-
         if (downloadButton) {
             downloadButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 downloadButton.style.transform = 'scale(0.95)';
-                
+               
                 const oldCount = downloadCount;
                 downloadCount++;
                 localStorage.setItem('appDownloadCount', downloadCount);
                 animateCounter(downloadCounter, oldCount, downloadCount, 500);
-
                 setTimeout(() => downloadButton.style.transform = '', 200);
-
                 setTimeout(() => {
                     const link = document.createElement('a');
                     link.href = downloadButton.href;
@@ -1211,10 +1206,9 @@
         }
 
         // ====================================
-        // НОВЫЙ КОД: ФУНКЦИОНАЛ ЧАТА (ИСПРАВЛЕННЫЙ)
+        // НОВЫЙ КОД ЧАТА С localStorage + задержка 5 секунд + «Админ печатает...»
         // ====================================
         const FLASK_API_URL = 'https://testhelper.pythonanywhere.com/api/chat';
-
         const chatWidget = document.getElementById('chat-widget');
         const chatToggleBtn = document.getElementById('chat-toggle-btn');
         const chatCloseBtn = document.getElementById('chat-close');
@@ -1224,22 +1218,77 @@
         const chatMessagesContainer = document.getElementById('chat-messages-container');
         const chatBody = document.getElementById('chat-body');
 
-        // Генерация или получение уникального ID пользователя (для анонимных пользователей)
+        // Уникальный ID пользователя
         let currentUserId = localStorage.getItem('chatUserId');
         if (!currentUserId) {
-            currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+            currentUserId = 'user_' + Math.random().toString(36).substr(2, 12);
             localStorage.setItem('chatUserId', currentUserId);
         }
 
-        // Имя пользователя (можно попросить ввести или оставить анонимным)
-        let currentUsername = localStorage.getItem('chatUsername') || 'Анонимный пользователь';
-        // Если хочешь — можно добавить модальное окно для ввода имени при первом открытии чата
+        // Имя пользователя (по желанию можно спросить один раз)
+        let currentUsername = localStorage.getItem('chatUsername') || 'Аноним';
 
-        // 1. Открытие/закрытие виджета
+        // Загрузка сообщений из localStorage (по userId, чтобы не путать разных пользователей/браузеры)
+        let chatMessages = [];
+        const storageKey = 'chatMessages_' + currentUserId;
+        if (localStorage.getItem(storageKey)) {
+            try {
+                chatMessages = JSON.parse(localStorage.getItem(storageKey));
+            } catch(e) {
+                chatMessages = [];
+            }
+        }
+
+        // Сохранение в localStorage
+        function saveMessages() {
+            localStorage.setItem(storageKey, JSON.stringify(chatMessages));
+        }
+
+        // Рендер одного сообщения + сохранение в localStorage
+        function renderMessage(text, isUser = true, timeStr = null) {
+            if (!timeStr) {
+                const now = new Date();
+                timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isUser ? 'chat-user' : 'chat-system'}`;
+            messageDiv.innerHTML = `
+                <p>${text.replace(/\n/g, '<br>')}</p>
+                <span class="chat-time">${timeStr}</span>
+            `;
+
+            chatMessagesContainer.appendChild(messageDiv);
+            chatMessages.push({ text, isUser, timeStr });
+            saveMessages();
+            scrollToBottom();
+        }
+
+        // Загрузка всей истории при открытии виджета
+        function loadChatHistory() {
+            chatMessagesContainer.innerHTML = '';
+            chatMessages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${msg.isUser ? 'chat-user' : 'chat-system'}`;
+                messageDiv.innerHTML = `
+                    <p>${msg.text.replace(/\n/g, '<br>')}</p>
+                    <span class="chat-time">${msg.timeStr}</span>
+                `;
+                chatMessagesContainer.appendChild(messageDiv);
+            });
+            scrollToBottom();
+        }
+
+        // Скролл вниз
+        function scrollToBottom() {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        // Открытие/закрытие виджета
         chatToggleBtn.addEventListener('click', () => {
             chatWidget.classList.toggle('open');
             if (chatWidget.classList.contains('open')) {
-                scrollToBottom();
+                loadChatHistory();   // ← именно здесь загружается история
                 chatInput.focus();
             }
         });
@@ -1248,74 +1297,67 @@
             chatWidget.classList.remove('open');
         });
 
-        // 2. Активация кнопки отправки
+        // Активация кнопки отправки
         chatInput.addEventListener('input', () => {
             chatSendBtn.disabled = chatInput.value.trim() === '';
         });
 
-        // 3. Скролл вниз
-        function scrollToBottom() {
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
-
-        // 4. Рендер сообщения
-        function renderMessage(text, isUser = true) {
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-           
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${isUser ? 'chat-user' : 'chat-system'}`;
-            messageDiv.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p><span class="chat-time">${timeStr}</span>`;
-           
-            chatMessagesContainer.appendChild(messageDiv);
-            scrollToBottom();
-        }
-
-        // 5. Отправка сообщения на бэкенд (ИСПРАВЛЕНО!)
+        // Отправка сообщения
         chatForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const message = chatInput.value.trim();
-    if (!message) return;
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
 
-    renderMessage(message, true);
-    chatInput.value = '';
-    chatSendBtn.disabled = true;
+            // 1. Сразу показываем сообщение пользователя
+            renderMessage(message, true);
+            chatInput.value = '';
+            chatSendBtn.disabled = true;
 
-    const typing = document.createElement('div');
-    typing.className = 'chat-status-message text-sm italic text-gray-500';
-    typing.textContent = 'Админ печатает...';
-    chatMessagesContainer.appendChild(typing);
-    scrollToBottom();
+            // 2. Показываем «Админ печатает...»
+            const typing = document.createElement('div');
+            typing.className = 'chat-status-message text-sm italic text-gray-500 text-left ml-4';
+            typing.textContent = 'Админ печатает...';
+            chatMessagesContainer.appendChild(typing);
+            scrollToBottom();
 
-    try {
-        const payload = {
-            message: message,
-            userId: currentUserId,
-            username: currentUsername
-        };
+            const sendTime = Date.now();   // запоминаем время отправки
 
-        const res = await fetch(FLASK_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            try {
+                const payload = {
+                    message: message,
+                    userId: currentUserId,
+                    username: currentUsername
+                };
+
+                const res = await fetch(FLASK_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+
+                    // Вычисляем сколько ещё ждать до 5 секунд
+                    const elapsed = Date.now() - sendTime;
+                    const delay = Math.max(0, 5000 - elapsed);
+
+                    setTimeout(() => {
+                        typing.remove();
+                        renderMessage(data.reply || 'Сообщение получил, отвечу в ближайшее время', false);
+                    }, delay);
+                } else {
+                    typing.remove();
+                    renderMessage('Ошибка сервера', false);
+                }
+            } catch (err) {
+                typing.remove();
+                renderMessage('Нет связи с сервером', false);
+            } finally {
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
         });
-
-        chatMessagesContainer.removeChild(typing);
-
-        if (res.ok) {
-            const data = await res.json();
-            renderMessage(data.reply, false);
-        } else {
-            renderMessage('Ошибка отправки', false);
-        }
-    } catch (err) {
-        chatMessagesContainer.removeChild(typing);
-        renderMessage('Нет связи с сервером', false);
-    } finally {
-        chatSendBtn.disabled = false;
-        chatInput.focus();
-    }
-});
 
         // Отправка по Enter (Shift+Enter = новая строка)
         chatInput.addEventListener('keydown', (e) => {
@@ -1328,5 +1370,6 @@
 </script>
 </body>
 </html>
+
 
 

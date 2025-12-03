@@ -1138,219 +1138,203 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // ====================================
-            // Анимация появления при скролле (старый код)
-            // ====================================
-            const revealElements = document.querySelectorAll('.reveal');
-            
-            const revealOnScroll = () => {
-                const windowHeight = window.innerHeight;
-                const revealPoint = 100;
-                
-                revealElements.forEach(element => {
-                    const revealTop = element.getBoundingClientRect().top;
-                    
-                    if (revealTop < windowHeight - revealPoint) {
-                        element.classList.add('active');
-                    }
-                });
+    document.addEventListener('DOMContentLoaded', () => {
+        // ====================================
+        // Анимация появления при скролле
+        // ====================================
+        const revealElements = document.querySelectorAll('.reveal');
+       
+        const revealOnScroll = () => {
+            const windowHeight = window.innerHeight;
+            const revealPoint = 100;
+           
+            revealElements.forEach(element => {
+                const revealTop = element.getBoundingClientRect().top;
+                if (revealTop < windowHeight - revealPoint) {
+                    element.classList.add('active');
+                }
+            });
+        };
+       
+        window.addEventListener('scroll', revealOnScroll);
+        window.addEventListener('load', revealOnScroll);
+        setTimeout(revealOnScroll, 100);
+
+        // ====================================
+        // Счетчик загрузок (без изменений)
+        // ====================================
+        const downloadButton = document.getElementById('download-button');
+        const downloadCounter = document.getElementById('download-counter');
+       
+        let downloadCount = localStorage.getItem('appDownloadCount') ?
+                            parseInt(localStorage.getItem('appDownloadCount')) :
+                            150;
+
+        function animateCounter(element, start, end, duration = 1000) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                const currentValue = Math.floor(easeOutCubic * (end - start) + start);
+                element.textContent = currentValue;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
             };
+            window.requestAnimationFrame(step);
+        }
 
-            // Инициализация анимации
-            window.addEventListener('scroll', revealOnScroll);
-            window.addEventListener('load', revealOnScroll);
-            
-            // Показать элементы при загрузке
-            setTimeout(revealOnScroll, 100);
+        animateCounter(downloadCounter, 0, downloadCount, 1200);
 
-            // ====================================
-            // Счетчик загрузок (старый код)
-            // ====================================
-            const downloadButton = document.getElementById('download-button');
-            const downloadCounter = document.getElementById('download-counter');
-            
-            let downloadCount = localStorage.getItem('appDownloadCount') ? 
-                                parseInt(localStorage.getItem('appDownloadCount')) : 
-                                150;
-
-            // Анимация счетчика
-            function animateCounter(element, start, end, duration = 1000) {
-                let startTimestamp = null;
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    const easeOutCubic = 1 - Math.pow(1 - progress, 3);
-                    const currentValue = Math.floor(easeOutCubic * (end - start) + start);
-                    element.textContent = currentValue;
-                    if (progress < 1) {
-                        window.requestAnimationFrame(step);
-                    }
-                };
-                window.requestAnimationFrame(step);
-            }
-
-            // Инициализация счетчика
-            animateCounter(downloadCounter, 0, downloadCount, 1200);
-
-            // Обработчик скачивания
-            if (downloadButton) {
-                downloadButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    
-                    // Анимация нажатия кнопки
-                    downloadButton.style.transform = 'scale(0.95)';
-                    
-                    // Увеличиваем счетчик
-                    const oldCount = downloadCount;
-                    downloadCount++;
-                    localStorage.setItem('appDownloadCount', downloadCount);
-                    
-                    // Анимация счетчика
-                    animateCounter(downloadCounter, oldCount, downloadCount, 500);
-                    
-                    // Восстанавливаем кнопку
-                    setTimeout(() => {
-                        downloadButton.style.transform = '';
-                    }, 200);
-                    
-                    // Имитация скачивания
-                    setTimeout(() => {
-                        const link = document.createElement('a');
-                        link.href = downloadButton.href;
-                        link.download = 'TestHelper_v1.0.apk';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }, 500);
-                });
-            }
-
-            // ====================================
-            // НОВЫЙ КОД: ФУНКЦИОНАЛ ЧАТА
-            // ====================================
-
-            // !!! ВАЖНО: Замените эту заглушку на ваш реальный URL-адрес Flask-бэкенда !!!
-            const FLASK_API_URL = 'https://testhelper.pythonanywhere.com/api/chat'; 
-
-            const chatWidget = document.getElementById('chat-widget');
-            const chatToggleBtn = document.getElementById('chat-toggle-btn');
-            const chatCloseBtn = document.getElementById('chat-close');
-            const chatForm = document.getElementById('chat-form');
-            const chatInput = document.getElementById('chat-input');
-            const chatSendBtn = document.getElementById('chat-send-btn');
-            const chatMessagesContainer = document.getElementById('chat-messages-container');
-            const chatBody = document.getElementById('chat-body');
-
-            // 1. Управление видимостью чата
-            chatToggleBtn.addEventListener('click', () => {
-                chatWidget.classList.toggle('open');
-                // Прокрутка вниз при открытии
-                if (chatWidget.classList.contains('open')) {
-                    scrollToBottom();
-                }
-            });
-
-            chatCloseBtn.addEventListener('click', () => {
-                chatWidget.classList.remove('open');
-            });
-
-            // 2. Включение/отключение кнопки отправки
-            chatInput.addEventListener('input', () => {
-                chatSendBtn.disabled = chatInput.value.trim() === '';
-            });
-
-            // 3. Скролл к последнему сообщению
-            function scrollToBottom() {
-                chatBody.scrollTop = chatBody.scrollHeight;
-            }
-
-            // 4. Рендер сообщения
-            function renderMessage(message, isUser = true) {
-                const now = new Date();
-                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `chat-message ${isUser ? 'chat-user' : 'chat-system'}`;
-                messageDiv.innerHTML = `<p>${message}</p><span class="chat-time">${timeStr}</span>`;
-                
-                chatMessagesContainer.appendChild(messageDiv);
-                scrollToBottom();
-            }
-
-            // 5. Отправка сообщения
-            chatForm.addEventListener('submit', async (e) => {
+        if (downloadButton) {
+            downloadButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                const message = chatInput.value.trim();
+                downloadButton.style.transform = 'scale(0.95)';
+                
+                const oldCount = downloadCount;
+                downloadCount++;
+                localStorage.setItem('appDownloadCount', downloadCount);
+                animateCounter(downloadCounter, oldCount, downloadCount, 500);
 
-                if (message === '') return;
+                setTimeout(() => downloadButton.style.transform = '', 200);
 
-                // Отображаем сообщение пользователя
-                renderMessage(message, true);
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = downloadButton.href;
+                    link.download = 'TestHelper_v1.0.apk';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, 500);
+            });
+        }
 
-                chatInput.value = ''; // Очистка поля ввода
-                chatSendBtn.disabled = true; // Блокировка кнопки
+        // ====================================
+        // НОВЫЙ КОД: ФУНКЦИОНАЛ ЧАТА (ИСПРАВЛЕННЫЙ)
+        // ====================================
+        const FLASK_API_URL = 'https://testhelper.pythonanywhere.com/api/chat';
 
-                // Добавляем сообщение о статусе
-                const statusMessageDiv = document.createElement('div');
-                statusMessageDiv.className = 'chat-status-message';
-                statusMessageDiv.textContent = 'Отправка...';
-                chatMessagesContainer.appendChild(statusMessageDiv);
+        const chatWidget = document.getElementById('chat-widget');
+        const chatToggleBtn = document.getElementById('chat-toggle-btn');
+        const chatCloseBtn = document.getElementById('chat-close');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const chatMessagesContainer = document.getElementById('chat-messages-container');
+        const chatBody = document.getElementById('chat-body');
+
+        // Генерация или получение уникального ID пользователя (для анонимных пользователей)
+        let currentUserId = localStorage.getItem('chatUserId');
+        if (!currentUserId) {
+            currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('chatUserId', currentUserId);
+        }
+
+        // Имя пользователя (можно попросить ввести или оставить анонимным)
+        let currentUsername = localStorage.getItem('chatUsername') || 'Анонимный пользователь';
+        // Если хочешь — можно добавить модальное окно для ввода имени при первом открытии чата
+
+        // 1. Открытие/закрытие виджета
+        chatToggleBtn.addEventListener('click', () => {
+            chatWidget.classList.toggle('open');
+            if (chatWidget.classList.contains('open')) {
                 scrollToBottom();
-
-                try {
-                    const response = await fetch(FLASK_API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message: message }),
-                    });
-
-                    // Удаляем сообщение о статусе
-                    chatMessagesContainer.removeChild(statusMessageDiv);
-
-                    if (response.ok) {
-                        // В случае успешной отправки, отображаем системный ответ
-                        renderMessage('Ваше сообщение получено. Спасибо за обратную связь!', false);
-                    } else {
-                        // Обработка ошибки сервера
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'chat-error';
-                        errorDiv.textContent = 'Ошибка отправки: не удалось связаться с сервером. Попробуйте позже.';
-                        chatMessagesContainer.appendChild(errorDiv);
-                    }
-
-                } catch (error) {
-                    // Обработка ошибки сети
-                    console.error('Network Error:', error);
-                    
-                    // Удаляем сообщение о статусе и добавляем сообщение об ошибке
-                    if (chatMessagesContainer.contains(statusMessageDiv)) {
-                        chatMessagesContainer.removeChild(statusMessageDiv);
-                    }
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'chat-error';
-                    errorDiv.textContent = 'Ошибка сети. Проверьте адрес бэкенда и настройки CORS.';
-                    chatMessagesContainer.appendChild(errorDiv);
-                } finally {
-                    // В любом случае, разблокируем кнопку
-                    chatSendBtn.disabled = false;
-                    scrollToBottom();
-                }
-            });
-
-            // Нажатие Enter для отправки
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!chatSendBtn.disabled) {
-                        chatForm.requestSubmit(); // Отправляем форму
-                    }
-                }
-            });
-
+                chatInput.focus();
+            }
         });
-    </script>
+
+        chatCloseBtn.addEventListener('click', () => {
+            chatWidget.classList.remove('open');
+        });
+
+        // 2. Активация кнопки отправки
+        chatInput.addEventListener('input', () => {
+            chatSendBtn.disabled = chatInput.value.trim() === '';
+        });
+
+        // 3. Скролл вниз
+        function scrollToBottom() {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        // 4. Рендер сообщения
+        function renderMessage(text, isUser = true) {
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+           
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isUser ? 'chat-user' : 'chat-system'}`;
+            messageDiv.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p><span class="chat-time">${timeStr}</span>`;
+           
+            chatMessagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // 5. Отправка сообщения на бэкенд (ИСПРАВЛЕНО!)
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Показываем сообщение пользователя
+            renderMessage(message, true);
+            chatInput.value = '';
+            chatSendBtn.disabled = true;
+
+            // Временное сообщение «печатает…»
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chat-status-message';
+            typingDiv.textContent = 'Печатает...';
+            chatMessagesContainer.appendChild(typingDiv);
+            scrollToBottom();
+
+            try {
+                const payload = {
+                    message: message,
+                    userId: currentUserId,
+                    username: currentUsername
+                };
+
+                const response = await fetch(FLASK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload) // ← Вот то самое исправление!
+                });
+
+                // Убираем «печатает…»
+                chatMessagesContainer.removeChild(typingDiv);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Если бэкенд возвращает ответ бота — показываем его
+                    renderMessage(data.reply || 'Спасибо за сообщение! Мы свяжемся с вами в ближайшее время.', false);
+                } else {
+                    renderMessage('Ошибка сервера. Попробуйте позже.', false);
+                }
+            } catch (err) {
+                console.error('Chat error:', err);
+                if (chatMessagesContainer.contains(typingDiv)) {
+                    chatMessagesContainer.removeChild(typingDiv);
+                }
+                renderMessage('Ошибка сети. Проверьте подключение к интернету.', false);
+            } finally {
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        });
+
+        // Отправка по Enter (Shift+Enter = новая строка)
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    });
+</script>
 </body>
 </html>
+
